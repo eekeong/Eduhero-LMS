@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EduHero LMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body class="bg-gray-50 text-gray-800 font-sans antialiased h-screen flex overflow-hidden">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- Login View -->
+    <div id="view-login"
+        class="view-section w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700">
+        <div
+            class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md transform transition-all hover:scale-105 duration-300">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-graduation-cap text-3xl text-indigo-600"></i>
+                </div>
+                <h1 class="text-3xl font-bold text-gray-800">EduHero LMS</h1>
+                <p class="text-gray-500 mt-2">Welcome back! Please login.</p>
+            </div>
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Student Code</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-user text-gray-400"></i>
+                        </div>
+                        <input type="text" id="login-email" required
+                            class="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                            placeholder="student_code">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-gray-400"></i>
+                        </div>
+                        <input type="password" id="login-password" required
+                            class="pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                            placeholder="••••••••">
+                    </div>
+                </div>
+                <button type="submit"
+                    class="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 transition-all shadow-lg hover:shadow-indigo-500/30">
+                    Sign In
+                </button>
+            </form>
+            <!-- Removed demo account hints -->
+        </div>
+    </div>
+
+    <!-- Main App Wrapper (Sidebar + Content) -->
+    <div id="view-app" class="view-section w-full h-full flex hidden">
+
+        <!-- Sidebar -->
+        <aside
+            class="w-64 bg-white border-r border-gray-200 flex flex-col h-full shadow-lg z-10 transition-all duration-300"
+            id="sidebar">
+            <div class="h-16 flex items-center px-6 border-b border-gray-100">
+                <i class="fas fa-graduation-cap text-2xl text-indigo-600 mr-3"></i>
+                <span
+                    class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">EduHero</span>
+            </div>
+
+            <div class="p-4 border-b border-gray-100 flex items-center">
+                <div
+                    class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg shadow-inner">
+                    <span id="user-initial">A</span>
+                </div>
+                <div class="ml-3 overflow-hidden flex-1">
+                    <p class="text-sm font-semibold text-gray-800 truncate" id="user-name">Admin User</p>
+                    <p class="text-xs text-gray-500 capitalize" id="user-role">Administrator</p>
+                    <p class="text-[10px] text-indigo-500 font-medium hidden" id="user-phone"></p>
+                </div>
+                <button onclick="ui.showChangePasswordModal()"
+                    class="text-gray-400 hover:text-indigo-600 transition p-2" title="Change Password">
+                    <i class="fas fa-cog"></i>
+                </button>
+            </div>
+
+            <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1" id="nav-menu">
+                <!-- Navigation items injected by JS based on role -->
+            </nav>
+
+            <div class="p-4 border-t border-gray-200">
+                <button id="logout-btn"
+                    class="flex items-center w-full px-4 py-2.5 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors group">
+                    <i class="fas fa-sign-out-alt w-5 h-5 mr-3 group-hover:scale-110 transition-transform"></i>
+                    Logout
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 bg-gray-50 flex flex-col h-full overflow-hidden relative">
+            <!-- Mobile Header -->
+            <header class="md:hidden h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4">
+                <div class="flex items-center">
+                    <i class="fas fa-graduation-cap text-xl text-indigo-600 mr-2"></i>
+                    <span class="text-lg font-bold">EduHero</span>
+                </div>
+                <button id="mobile-menu-btn" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </header>
+
+            <!-- Dynamic Page Content -->
+            <div id="page-content" class="flex-1 overflow-y-auto p-4 md:p-8">
+                <!-- Content injected here -->
+            </div>
+        </main>
+
+        <!-- Mobile Sidebar Overlay -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-gray-800 bg-opacity-50 z-0 hidden md:hidden"></div>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modals-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="js/firebase.js?v=2"></script>
+    <script src="js/store.js?v=2"></script>
+    <script src="js/auth.js?v=2"></script>
+    <script src="js/components.js?v=2"></script>
+    <script src="js/api/bunnyStream.js?v=2"></script>
+    <script src="js/uploadManager.js?v=2"></script>
+    <script src="js/pages/admin.js?v=2"></script>
+    <script src="js/pages/teacher.js?v=2"></script>
+    <script src="js/pages/student.js?v=2"></script>
+    <script src="js/app.js?v=2"></script>
+</body>
+
+</html>
