@@ -70,7 +70,7 @@ const AdminPage = {
                                 </table>
                             </div>
                             <div id="admin-users-pagination" class="mt-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50 p-3 rounded-lg border border-gray-200"></div>
-                            <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>CSV Format: Name, Email, Password, Role (student/teacher), AssignedSubjects (comma separated subject IDs)</p>
+                            <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>CSV Format: Name, Email, Password, Role (student/teacher), Level, Subject</p>
                         </div>
                         <!-- Videos Tab -->
                         <div id="tab-videos" class="tab-content hidden space-y-4">
@@ -767,10 +767,56 @@ const AdminPage = {
     },
 
     renderStats() {
+        const container = document.getElementById('admin-stats');
+        if (!container) return;
+
         const users = store.getUsers();
         const subjects = store.getSubjects();
         const videos = store.getVideos();
-        
+
+        // Show loading skeletons if data hasn't synced yet
+        if (!store.areUsersLoaded()) {
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between animate-pulse">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-gray-200 mr-4"></div>
+                        <div>
+                            <div class="h-3 w-16 bg-gray-200 rounded mb-2"></div>
+                            <div class="h-6 w-10 bg-gray-200 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between animate-pulse">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-gray-200 mr-4"></div>
+                        <div>
+                            <div class="h-3 w-16 bg-gray-200 rounded mb-2"></div>
+                            <div class="h-6 w-10 bg-gray-200 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between animate-pulse">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-gray-200 mr-4"></div>
+                        <div>
+                            <div class="h-3 w-16 bg-gray-200 rounded mb-2"></div>
+                            <div class="h-6 w-10 bg-gray-200 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-100 shadow-sm flex items-center justify-between animate-pulse">
+                    <div class="flex items-center">
+                        <div class="w-12 h-12 rounded-lg bg-gray-200 mr-4"></div>
+                        <div>
+                            <div class="h-3 w-16 bg-gray-200 rounded mb-2"></div>
+                            <div class="h-6 w-10 bg-gray-200 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
         const students = users.filter(u => u.role === 'student').length;
         const teachers = users.filter(u => u.role === 'teacher').length;
 
@@ -1931,34 +1977,28 @@ const AdminPage = {
                         
                         let assignedIds = [];
                         
-                        // Handle new Level + Subject format OR legacy AssignedSubjects format
+                        // Handle Level + Subject format
                         const rowLevel = (row.Level || '').trim().toLowerCase();
                         const rowSubjects = (row.Subject || '').trim();
-                        const rowAssignedLegacy = (row.AssignedSubjects || '').trim();
-                        
-                        let subjectsToProcess = [];
                         
                         if (rowLevel && rowSubjects) {
-                            // If they provided "Form 1" and "History, Geography"
                             const parts = rowSubjects.split(',').map(s => s.trim().toLowerCase());
                             parts.forEach(p => {
-                                // Try exact match: "Form 1 History"
-                                const fullName = `${rowLevel} ${p}`;
-                                subjectsToProcess.push(fullName);
+                                const match = allSubjects.find(s => 
+                                    (s.level || '').toLowerCase() === rowLevel &&
+                                    (
+                                        (s.category || '').toLowerCase() === p ||
+                                        (s.name || '').toLowerCase() === p ||
+                                        (s.name || '').toLowerCase() === `${p} ${rowLevel}` ||
+                                        (s.name || '').toLowerCase() === `${rowLevel} ${p}` ||
+                                        (p === 'history' && (s.category || '').toLowerCase() === 'sej') ||
+                                        (p === 'geography' && (s.category || '').toLowerCase() === 'geo') ||
+                                        (p === 'science' && (s.category || '').toLowerCase() === 'sci')
+                                    )
+                                );
+                                if (match) assignedIds.push(match.id);
                             });
-                        } else if (rowAssignedLegacy) {
-                            subjectsToProcess = rowAssignedLegacy.split(',').map(s => s.trim().toLowerCase());
                         }
-
-                        subjectsToProcess.forEach(p => {
-                            const byId = allSubjects.find(s => s.id.toLowerCase() === p);
-                            if (byId) {
-                                assignedIds.push(byId.id);
-                            } else {
-                                const byName = allSubjects.find(s => s.name.toLowerCase() === p);
-                                if (byName) assignedIds.push(byName.id);
-                            }
-                        });
 
                         if (!existing) {
                             const rowPassword = (row.Password || 'password').trim();
@@ -2083,16 +2123,16 @@ const AdminPage = {
     },
 
     downloadUserTemplate() {
-        const headers = ['Name', 'Email', 'Password', 'Role', 'Level', 'Subject', 'AssignedSubjects'];
+        const headers = ['Name', 'Email', 'Password', 'Role', 'Level', 'Subject'];
         const sampleData = [
-            ['Ali bin Abu', 'ali@example.com', '', 'student', 'Form 1', 'History, Geography', ''],
-            ['Tan Ah Kow', 'tan@example.com', '', 'student', 'Form 2', 'Science', ''],
-            ['John Doe', 'john@example.com', '123456', 'student', '', '', 'Form 3 History, Form 3 Geography']
+            ['Ali bin Abu', 'ali@example.com', '', 'student', 'Form 1', 'SEJ, GEO'],
+            ['Tan Ah Kow', 'tan@example.com', '', 'student', 'Form 2', 'SCI'],
+            ['John Doe', 'john@example.com', '123456', 'student', 'Form 3', 'SEJ, GEO']
         ];
         
-        let csvContent = headers.join(',') + '\\n';
+        let csvContent = headers.join(',') + '\n';
         sampleData.forEach(row => {
-            csvContent += row.map(val => `"${val}"`).join(',') + '\\n';
+            csvContent += row.map(val => `"${val}"`).join(',') + '\n';
         });
 
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -2876,10 +2916,24 @@ ${user.name} 本月表现非常积极，已经跟上所有进度，请继续保�
                 }
             }
 
-            store.updateUser(userId, updates);
-            ui.closeModal('edit-user-modal');
-            ui.showToast('User updated successfully');
-            AdminPage.init();
+            try {
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+                submitBtn.disabled = true;
+
+                Promise.resolve(store.updateUser(userId, updates)).then(() => {
+                    ui.showToast('User updated successfully');
+                    AdminPage.renderUsers(); // update table in background
+                }).catch(err => {
+                    ui.showToast(err.message || 'Update failed', 'error');
+                }).finally(() => {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                });
+            } catch (err) {
+                ui.showToast(err.message || 'Error updating user', 'error');
+            }
         });
     },
 

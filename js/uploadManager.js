@@ -3,7 +3,7 @@ const UploadManager = {
     queue: [],
     isUploading: false,
     isMinimized: false,
-    
+
     init() {
         if (!document.getElementById('upload-manager-widget')) {
             const container = document.createElement('div');
@@ -21,7 +21,7 @@ const UploadManager = {
 
     addUpload(file, uploadData) {
         this.init();
-        const id = 'up_' + Date.now() + Math.floor(Math.random()*1000);
+        const id = 'up_' + Date.now() + Math.floor(Math.random() * 1000);
         this.queue.push({
             id: id,
             file: file,
@@ -30,10 +30,10 @@ const UploadManager = {
             status: 'pending', // pending, uploading, done, error
             errorMsg: ''
         });
-        
+
         ui.showToast(`"${uploadData.title}" added to upload queue.`);
         this.renderWidget();
-        
+
         if (!this.isUploading) {
             this.processNext();
         }
@@ -78,7 +78,7 @@ const UploadManager = {
             });
 
             store.addLog('Upload Video (Background)', `"${next.data.title}" to Subject ${next.data.subjectId}`);
-            
+
             next.status = 'done';
             this.showCompletionNotification(next, true);
 
@@ -114,7 +114,7 @@ const UploadManager = {
         const activeItems = this.queue.filter(q => q.status === 'pending' || q.status === 'uploading');
         const container = document.getElementById('upload-manager-widget');
         if (!container) return;
-        
+
         if (activeItems.length === 0) {
             container.innerHTML = '';
             return;
@@ -173,11 +173,11 @@ const UploadManager = {
         `;
 
         notifContainer.insertAdjacentHTML('beforeend', html);
-        
+
         // Trigger animation
         setTimeout(() => {
             const el = document.getElementById(elId);
-            if(el) {
+            if (el) {
                 el.classList.remove('translate-x-4', 'opacity-0');
             }
         }, 50);

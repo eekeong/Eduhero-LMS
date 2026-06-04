@@ -274,7 +274,10 @@ const TeacherPage = {
             
             const fileInput = document.getElementById('av-video-file');
             const file = fileInput.files[0];
-            if (!file) return ui.showToast('Please select a video file', 'warning');
+            if (!file) {
+                alert('Please select a video file');
+                return;
+            }
 
             const user = auth.getCurrentUser();
             
@@ -282,7 +285,8 @@ const TeacherPage = {
             const mappings = store.getBunnySecrets().mappings || [];
             const mapping = mappings.find(m => m.subjectId === subjectId && m.teacherId === user.id);
             if (!mapping || !mapping.libraryKey) {
-                return ui.showToast('Your teacher account is not configured for direct upload for this subject. Please contact Admin.', 'error');
+                alert('Your teacher account is not configured for direct upload for this subject. Please contact Admin.');
+                return;
             }
 
             const title = document.getElementById('av-title').value;

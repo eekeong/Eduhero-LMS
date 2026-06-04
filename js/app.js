@@ -35,24 +35,11 @@ const App = {
                     this.setupActivityTracking(user.id);
                 }
             }
-            
-            this.hideLoadingOverlay();
             this.checkAuthAndRender();
         });
 
         // Fail-safe: Hide overlay if stuck
-        setTimeout(() => this.hideLoadingOverlay(), 5000);
-    },
-
-    hideLoadingOverlay() {
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay && overlay.style.display !== 'none') {
-            overlay.style.opacity = '0';
-            setTimeout(() => {
-                overlay.style.display = 'none';
-                console.log('[App] ✨ Loading overlay removed.');
-            }, 300);
-        }
+        setTimeout(() => this.hideGlobalLoader(), 5000);
     },
 
     applySystemSettings() {
@@ -60,7 +47,6 @@ const App = {
         const logoUrl = settings.logoUrl;
         const systemName = settings.systemName || 'EduHero';
 
-        // Update Names
         const loginSystemName = document.getElementById('login-system-name');
         if (loginSystemName) {
             loginSystemName.textContent = systemName === 'EduHero' ? 'EduHero学习重播系统' : (systemName + ' LMS');
@@ -69,6 +55,8 @@ const App = {
         if (sidebarSystemName) sidebarSystemName.textContent = systemName;
         const mobileSystemName = document.getElementById('mobile-system-name');
         if (mobileSystemName) mobileSystemName.textContent = systemName;
+        const loaderSystemName = document.getElementById('loader-system-name');
+        if (loaderSystemName) loaderSystemName.textContent = systemName + ' LMS';
         document.title = systemName + ' LMS';
 
         // Update Logos
@@ -85,7 +73,7 @@ const App = {
                 if (icon) icon.classList.add('hidden');
                 const img = document.createElement('img');
                 img.src = logoUrl;
-                img.className = wrapperId === 'login-logo-container' ? 'w-full h-full object-cover rounded-full' : 'h-8 max-w-[120px] object-contain';
+                img.className = wrapperId === 'login-logo-container' || wrapperId === 'loader-logo-container' ? 'w-full h-full object-cover rounded-full' : 'h-8 max-w-[120px] object-contain';
                 wrapper.appendChild(img);
             } else {
                 if (icon) icon.classList.remove('hidden');
@@ -95,6 +83,7 @@ const App = {
         setLogo('login-logo-container', 'login-logo-icon');
         setLogo('sidebar-logo-wrapper', 'sidebar-logo-icon');
         setLogo('mobile-logo-wrapper', 'mobile-logo-icon');
+        setLogo('loader-logo-container', 'loader-logo-icon');
 
         // Apply System Theme Color
         const systemColor = settings.systemColor || '#4F46E5';
@@ -239,6 +228,23 @@ const App = {
     },
 
 
+    showGlobalLoader() {
+        const loader = document.getElementById('global-loader');
+        if (loader) {
+            loader.classList.remove('hidden');
+            // Small delay to ensure opacity transition works if just added
+            setTimeout(() => loader.classList.remove('opacity-0'), 10);
+        }
+    },
+
+    hideGlobalLoader() {
+        const loader = document.getElementById('global-loader');
+        if (loader) {
+            loader.classList.add('opacity-0');
+            setTimeout(() => loader.classList.add('hidden'), 500); // Wait for transition
+        }
+    },
+
     async checkAuthAndRender() {
         console.log('[App] 🛡️ checkAuthAndRender started. Authenticated:', auth.isAuthenticated());
         const viewLogin = document.getElementById('view-login');
@@ -246,6 +252,7 @@ const App = {
 
         if (auth.isAuthenticated()) {
             console.log('[App] 🔓 Showing App View...');
+            this.showGlobalLoader();
             
             const fbUser = firebase.auth().currentUser;
             if (fbUser) {
@@ -266,13 +273,15 @@ const App = {
             this.setupAppView();
         } else {
             console.log('[App] 🔒 Showing Login View...');
+            this.hideGlobalLoader();
             viewApp.classList.remove('active');
             viewLogin.classList.add('active');
         }
     },
 
-    setupAppView() {
+    async setupAppView() {
         if (auth.isMigrating) {
+            this.hideGlobalLoader();
             return;
         }
         
@@ -292,9 +301,7 @@ const App = {
                     </button>
                 </div>
             `;
-            // Hide loading overlay just in case it's still there
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) overlay.style.display = 'none';
+            this.hideGlobalLoader();
             return;
         }
 
@@ -326,9 +333,7 @@ const App = {
 
         if ((fullUser.role === 'student' || fullUser.role === 'teacher') && fullUser.mustChangePassword) {
             ui.showForceChangePasswordModal();
-            // Hide loading overlay if it's still visible
-            const overlay = document.getElementById('loading-overlay');
-            if (overlay) overlay.style.display = 'none';
+            this.hideGlobalLoader();
             return;
         }
 
@@ -368,13 +373,12 @@ const App = {
 
         this.renderNavMenu(navItems, user.role === 'admin' ? 'reports' : 'dashboard');
 
-        // Ensure the loading overlay is gone
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) overlay.style.display = 'none';
-
         // Start role-based Firestore listeners for this user AFTER initial render
         // so that the reactive UI updates can find the newly-rendered DOM containers.
-        store.startSync(user);
+        await store.startSync(user);
+        
+        // Hide global loader once sync is complete
+        this.hideGlobalLoader();
     },
 
     renderNavMenu(navItems, activeId) {

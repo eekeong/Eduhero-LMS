@@ -28,7 +28,7 @@ const ui = {
             info: 'fa-info-circle'
         };
 
-        toast.className = `flex items-center p-4 mb-2 rounded-lg border shadow-sm fade-in ${colors[type]}`;
+        toast.className = `flex items-center p-4 mb-2 rounded-lg border shadow-sm fade-in ${colors[type]} pointer-events-auto`;
         toast.innerHTML = `
             <i class="fas ${icons[type]} flex-shrink-0 w-5 h-5 mr-3"></i>
             <div class="text-sm font-medium">${cleanMsg}</div>

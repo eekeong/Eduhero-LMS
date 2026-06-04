@@ -33,6 +33,7 @@ const _cache = {
     bunnySecrets: null,
     ready:       false,
     listeners:   [],  // array of unsubscribe functions
+    initialUsersLoaded: false
 };
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -121,193 +122,236 @@ async function seedIfEmpty() {
 //  comments    → NO persistent listener.
 //                Read once per video when a video is opened.
 //
-function attachRoleListeners(user) {
+function waitForSnapshot(query, callback, unsubsArray) {
+    return new Promise(resolve => {
+        let isResolved = false;
+        const unsub = query.onSnapshot(snap => {
+            callback(snap);
+            // Determine if it has data. For single docs, snap.exists is boolean. For collections, snap.docs is array.
+            const hasData = snap.exists !== undefined ? snap.exists : (snap.docs && snap.docs.length > 0);
+            if (!isResolved && (!snap.metadata.fromCache || hasData)) {
+                isResolved = true;
+                resolve();
+            }
+        }, err => {
+            console.error('[Store] Snapshot error:', err);
+            if (!isResolved) {
+                isResolved = true;
+                resolve();
+            }
+        });
+        unsubsArray.push(unsub);
+    });
+}
+
+async function attachRoleListeners(user) {
     const unsubs = [];
+    const promises = [];
 
     // ── SETTINGS (all roles) ──────────────────────────────────
     // Single-document listener — very cheap (1 read on change)
-    unsubs.push(
-        db.collection(COLLECTIONS.SETTINGS).doc('main')
-            .onSnapshot(doc => {
-                if (doc.exists) _cache.settings = { ...DEFAULT_SETTINGS, ...doc.data() };
-            })
-    );
+    promises.push(waitForSnapshot(
+        db.collection(COLLECTIONS.SETTINGS).doc('main'),
+        doc => {
+            if (doc.exists) _cache.settings = { ...DEFAULT_SETTINGS, ...doc.data() };
+        },
+        unsubs
+    ));
 
     // ── SECRETS (admin & teacher) ─────────────────────────────
     if (user.role === 'admin' || user.role === 'teacher') {
-        unsubs.push(
-            db.collection(COLLECTIONS.SECRETS).doc('bunny')
-                .onSnapshot(doc => {
-                    if (doc.exists) _cache.bunnySecrets = doc.data();
-                })
-        );
+        promises.push(waitForSnapshot(
+            db.collection(COLLECTIONS.SECRETS).doc('bunny'),
+            doc => {
+                if (doc.exists) _cache.bunnySecrets = doc.data();
+            },
+            unsubs
+        ));
     }
 
     // ── SUBJECTS (all roles) ──────────────────────────────────
     // Small collection (~77 docs), needed by all roles
-    unsubs.push(
-        db.collection(COLLECTIONS.SUBJECTS)
-            .onSnapshot(snap => {
-                _cache.subjects = snap.docs.map(docToObj);
-                // Reactive UI updates for all roles
-                if (typeof AdminPage !== 'undefined' && typeof AdminPage.renderSubjects === 'function' && document.getElementById('admin-subjects-main')) {
-                    AdminPage.renderSubjects();
-                    AdminPage.renderStats();
+    promises.push(waitForSnapshot(
+        db.collection(COLLECTIONS.SUBJECTS),
+        snap => {
+            _cache.subjects = snap.docs.map(docToObj);
+            // Reactive UI updates for all roles
+            if (typeof AdminPage !== 'undefined' && typeof AdminPage.renderSubjects === 'function' && document.getElementById('admin-subjects-main')) {
+                AdminPage.renderSubjects();
+                AdminPage.renderStats();
+            }
+            // Smart refresh for Teacher: Only render if not loaded yet
+            if (typeof TeacherPage !== 'undefined' && document.getElementById('teacher-levels-list')) {
+                const container = document.getElementById('teacher-levels-list');
+                if (!container.hasAttribute('data-loaded')) {
+                    TeacherPage.renderSubjects();
                 }
-                // Smart refresh for Teacher: Only render if not loaded yet
-                if (typeof TeacherPage !== 'undefined' && document.getElementById('teacher-levels-list')) {
-                    const container = document.getElementById('teacher-levels-list');
-                    if (!container.hasAttribute('data-loaded')) {
-                        TeacherPage.renderSubjects();
-                    }
+            }
+            // Smart refresh for Student
+            if (typeof StudentPage !== 'undefined' && document.getElementById('student-dashboard-wrapper')) {
+                const container = document.getElementById('student-subjects');
+                if (container) {
+                    StudentPage.renderSubjects();
                 }
-                // Smart refresh for Student
-                if (typeof StudentPage !== 'undefined' && document.getElementById('student-dashboard-wrapper')) {
-                    const container = document.getElementById('student-subjects');
-                    if (container) {
-                        StudentPage.renderSubjects();
-                    }
-                }
-            })
-    );
+            }
+        },
+        unsubs
+    ));
 
     // ── CURRENT USER DATA (student/teacher) ──────────────────
     // Admin already listens to ALL users below.
     // Students/Teachers need to listen to their own doc for subject/month updates.
     if (user.role !== 'admin') {
-        unsubs.push(
-            db.collection(COLLECTIONS.USERS).doc(user.id)
-                .onSnapshot(doc => {
-                    if (doc.exists) {
-                        const userData = docToObj(doc);
-                        const oldUser = _cache.users.find(u => u.id === user.id);
-                        
-                        // DEFINITIVE FIX: Re-render if subjects, months, or expiry changed.
-                        const oldState = JSON.stringify({
-                            s: oldUser?.subjects || [],
-                            m: oldUser?.months || {},
-                            e: oldUser?.monthExpiry || {}
-                        });
-                        const newState = JSON.stringify({
-                            s: userData.subjects || [],
-                            m: userData.months || {},
-                            e: userData.monthExpiry || {}
-                        });
-                        const hasSignificantChange = !oldUser || oldState !== newState;
+        promises.push(waitForSnapshot(
+            db.collection(COLLECTIONS.USERS).doc(user.id),
+            doc => {
+                if (doc.exists) {
+                    const userData = docToObj(doc);
+                    const oldUser = _cache.users.find(u => u.id === user.id);
+                    
+                    // DEFINITIVE FIX: Re-render if subjects, months, or expiry changed.
+                    const oldState = JSON.stringify({
+                        s: oldUser?.subjects || [],
+                        m: oldUser?.months || {},
+                        e: oldUser?.monthExpiry || {}
+                    });
+                    const newState = JSON.stringify({
+                        s: userData.subjects || [],
+                        m: userData.months || {},
+                        e: userData.monthExpiry || {}
+                    });
+                    const hasSignificantChange = !oldUser || oldState !== newState;
 
-                        const idx = _cache.users.findIndex(u => u.id === user.id);
-                        if (idx === -1) _cache.users.push(userData);
-                        else _cache.users[idx] = userData;
+                    const idx = _cache.users.findIndex(u => u.id === user.id);
+                    if (idx === -1) _cache.users.push(userData);
+                    else _cache.users[idx] = userData;
 
-                        if (hasSignificantChange) {
-                            // Smart UI updates
-                            if (user.role === 'teacher' && typeof TeacherPage !== 'undefined' && document.getElementById('teacher-levels-list')) {
-                                TeacherPage.renderSubjects();
-                            }
-                            if (user.role === 'student' && typeof StudentPage !== 'undefined' && document.getElementById('student-dashboard-wrapper')) {
-                                StudentPage.renderSubjects();
-                            }
+                    if (hasSignificantChange) {
+                        // Smart UI updates
+                        if (user.role === 'teacher' && typeof TeacherPage !== 'undefined' && document.getElementById('teacher-levels-list')) {
+                            TeacherPage.renderSubjects();
+                        }
+                        if (user.role === 'student' && typeof StudentPage !== 'undefined' && document.getElementById('student-dashboard-wrapper')) {
+                            StudentPage.renderSubjects();
                         }
                     }
-                })
-        );
+                }
+            },
+            unsubs
+        ));
     }
 
     // ── ADMIN-only listeners ──────────────────────────────────
     if (user.role === 'admin') {
         // Full users list (needed for user management)
-        unsubs.push(
-            db.collection(COLLECTIONS.USERS)
-                .onSnapshot(snap => {
-                    _cache.users = snap.docs.map(docToObj);
-                    // Reactive UI update for Admin
-                    if (typeof AdminPage !== 'undefined' && document.getElementById('admin-users-list')) {
-                        AdminPage.renderUsers();
-                        AdminPage.renderSubjects(); // Update teacher counts in subjects list
-                        AdminPage.renderStats();
-                    }
-                })
-        );
+        promises.push(waitForSnapshot(
+            db.collection(COLLECTIONS.USERS),
+            snap => {
+                _cache.users = snap.docs.map(docToObj);
+                
+                // Prevent local cache from instantly bypassing skeleton loader if it only has the admin user
+                if (!snap.metadata.fromCache || snap.docs.length > 1) {
+                    _cache.initialUsersLoaded = true;
+                }
+                
+                // Reactive UI update for Admin
+                if (typeof AdminPage !== 'undefined' && document.getElementById('admin-users-list')) {
+                    AdminPage.renderUsers();
+                    AdminPage.renderSubjects(); // Update teacher counts in subjects list
+                    AdminPage.renderStats();
+                }
+            },
+            unsubs
+        ));
         // All videos (needed for admin monitoring)
-        unsubs.push(
-            db.collection(COLLECTIONS.VIDEOS)
-                .onSnapshot(snap => {
-                    _cache.videos = snap.docs.map(docToObj);
-                    // Reactive UI update for Admin
-                    if (typeof AdminPage !== 'undefined' && document.getElementById('admin-videos-list')) {
-                        AdminPage.renderVideos();
-                        AdminPage.renderSubjects(); // CRITICAL: Update video counts in subjects list
-                        AdminPage.renderStats();
-                    }
-                })
-        );
+        promises.push(waitForSnapshot(
+            db.collection(COLLECTIONS.VIDEOS),
+            snap => {
+                _cache.videos = snap.docs.map(docToObj);
+                // Reactive UI update for Admin
+                if (typeof AdminPage !== 'undefined' && document.getElementById('admin-videos-list')) {
+                    AdminPage.renderVideos();
+                    AdminPage.renderSubjects(); // CRITICAL: Update video counts in subjects list
+                    AdminPage.renderStats();
+                }
+            },
+            unsubs
+        ));
         // NOTE: activityLog has NO listener — fetched on-demand only
         
         // Progress (Admin needs to see everyone's progress for reports)
-        unsubs.push(
-            db.collection(COLLECTIONS.PROGRESS)
-                .onSnapshot(snap => {
-                    _cache.progress = snap.docs.map(docToObj);
-                    // Refresh reports if visible
-                    if (typeof AdminPage !== 'undefined' && document.getElementById('tab-reports') && !document.getElementById('tab-reports').classList.contains('hidden')) {
-                        AdminPage.renderReports();
-                    }
-                })
-        );
+        promises.push(waitForSnapshot(
+            db.collection(COLLECTIONS.PROGRESS),
+            snap => {
+                _cache.progress = snap.docs.map(docToObj);
+                // Refresh reports if visible
+                if (typeof AdminPage !== 'undefined' && document.getElementById('tab-reports') && !document.getElementById('tab-reports').classList.contains('hidden')) {
+                    AdminPage.renderReports();
+                }
+            },
+            unsubs
+        ));
 
     // ── TEACHER-only listeners ────────────────────────────────
     } else if (user.role === 'teacher') {
         // Teachers should see all videos (similar to students) so they can see existing content
         // in their assigned subjects. They can only edit/delete their own videos via UI logic.
-        unsubs.push(
-            db.collection(COLLECTIONS.VIDEOS)
-                .onSnapshot(snap => {
-                    _cache.videos = snap.docs.map(docToObj);
-                    // Reactive UI update for Teacher dashboard video counts
-                    if (typeof TeacherPage !== 'undefined' && document.getElementById('teacher-levels-list')) {
-                        TeacherPage.renderSubjects();
-                    }
-                })
-        );
+        promises.push(waitForSnapshot(
+            db.collection(COLLECTIONS.VIDEOS),
+            snap => {
+                _cache.videos = snap.docs.map(docToObj);
+                // Reactive UI update for Teacher dashboard video counts
+                if (typeof TeacherPage !== 'undefined' && document.getElementById('teacher-levels-list')) {
+                    TeacherPage.renderSubjects();
+                }
+            },
+            unsubs
+        ));
         // Progress (Teacher needs to see progress for view counts)
-        unsubs.push(
-            db.collection(COLLECTIONS.PROGRESS)
-                .onSnapshot(snap => {
-                    _cache.progress = snap.docs.map(docToObj);
-                    if (typeof TeacherPage !== 'undefined' && document.getElementById('teacher-levels-list')) {
-                        TeacherPage.renderSubjects();
-                    }
-                })
-        );
+        promises.push(waitForSnapshot(
+            db.collection(COLLECTIONS.PROGRESS),
+            snap => {
+                _cache.progress = snap.docs.map(docToObj);
+                if (typeof TeacherPage !== 'undefined' && document.getElementById('teacher-levels-list')) {
+                    TeacherPage.renderSubjects();
+                }
+            },
+            unsubs
+        ));
 
     // ── STUDENT-only listeners ────────────────────────────────
     } else if (user.role === 'student') {
         // All videos (student needs to see videos for their subjects)
-        unsubs.push(
-            db.collection(COLLECTIONS.VIDEOS)
-                .onSnapshot(snap => {
-                    _cache.videos = snap.docs.map(docToObj);
-                    // Refresh student dashboard when videos arrive (needed for lesson counts)
-                    if (typeof StudentPage !== 'undefined' && document.getElementById('student-dashboard-wrapper')) {
-                        StudentPage.renderSubjects();
-                    }
-                })
-        );
+        promises.push(waitForSnapshot(
+            db.collection(COLLECTIONS.VIDEOS),
+            snap => {
+                _cache.videos = snap.docs.map(docToObj);
+                // Refresh student dashboard when videos arrive (needed for lesson counts)
+                if (typeof StudentPage !== 'undefined' && document.getElementById('student-dashboard-wrapper')) {
+                    StudentPage.renderSubjects();
+                }
+            },
+            unsubs
+        ));
         // Only this student's progress (not all students')
-        unsubs.push(
-            db.collection(COLLECTIONS.PROGRESS)
-                .where('studentId', '==', user.id)
-                .onSnapshot(snap => {
-                    // Merge: keep other students' progress in cache
-                    const myProgress    = snap.docs.map(docToObj);
-                    const otherProgress = _cache.progress.filter(p => p.studentId !== user.id);
-                    _cache.progress = [...otherProgress, ...myProgress];
-                })
-        );
+        promises.push(waitForSnapshot(
+            db.collection(COLLECTIONS.PROGRESS).where('studentId', '==', user.id),
+            snap => {
+                // Merge: keep other students' progress in cache
+                const myProgress    = snap.docs.map(docToObj);
+                const otherProgress = _cache.progress.filter(p => p.studentId !== user.id);
+                _cache.progress = [...otherProgress, ...myProgress];
+            },
+            unsubs
+        ));
     }
 
     _cache.listeners = unsubs;
     console.log(`[Store] Attached ${unsubs.length} listener(s) for role: ${user.role}`);
+    
+    // Wait for all initial snapshots to resolve
+    await Promise.all(promises);
+    console.log('[Store] Initial sync complete.');
 }
 
 // ── Public Store API ─────────────────────────────────────────
@@ -327,14 +371,17 @@ const store = {
                 _cache.settings = { ...DEFAULT_SETTINGS, ...settingsDoc.data() };
             }
             
-            // WARM CACHE: Fetch subjects and videos immediately so they are available on refresh
-            const subSnap = await db.collection(COLLECTIONS.SUBJECTS).get();
-            _cache.subjects = subSnap.docs.map(docToObj);
+            // WARM CACHE: Fetch subjects and videos immediately but asynchronously
+            // so they do not block the app initialization UI.
+            db.collection(COLLECTIONS.SUBJECTS).get().then(subSnap => {
+                _cache.subjects = subSnap.docs.map(docToObj);
+            }).catch(e => console.warn('[Store] Warm subjects cache failed:', e));
             
-            const vidSnap = await db.collection(COLLECTIONS.VIDEOS).get();
-            _cache.videos = vidSnap.docs.map(docToObj);
+            db.collection(COLLECTIONS.VIDEOS).get().then(vidSnap => {
+                _cache.videos = vidSnap.docs.map(docToObj);
+                _cache.ready = true;
+            }).catch(e => console.warn('[Store] Warm videos cache failed:', e));
             
-            _cache.ready = true;
         } catch (err) {
             console.warn('[Store] ⚠️ Network delay: UI might be temporarily empty.');
         }
@@ -347,9 +394,9 @@ const store = {
     // startSync(user) — call after successful login.
     // Attaches role-specific real-time listeners.
     // ----------------------------------------------------------
-    startSync(user) {
+    async startSync(user) {
         this.stopSync(); // detach any existing listeners first
-        if (user) attachRoleListeners(user);
+        if (user) await attachRoleListeners(user);
     },
 
     // ----------------------------------------------------------
@@ -442,6 +489,10 @@ const store = {
     // ----------------------------------------------------------
     isReady() {
         return _cache.ready;
+    },
+
+    areUsersLoaded() {
+        return _cache.initialUsersLoaded;
     },
 
     getUsers() {
