@@ -211,7 +211,7 @@ const AdminPage = {
                                                 <label class="block text-sm font-medium text-emerald-900 mb-1">Days to Activate</label>
                                                 <input type="number" id="access-days" value="45" min="1" class="w-full px-3 py-2 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none text-sm">
                                             </div>
-                                            <button onclick="AdminPage.grantMonthlyAccess()" class="w-full md:w-auto px-6 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition shadow-sm whitespace-nowrap h-10">
+                                            <button onclick="AdminPage.grantMonthlyAccess(event)" class="w-full md:w-auto px-6 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 transition shadow-sm whitespace-nowrap h-10">
                                                 <i class="fas fa-unlock-alt mr-2"></i> Grant Access
                                             </button>
                                         </div>
@@ -557,7 +557,7 @@ const AdminPage = {
                 }
             });
         });
-    },    async grantMonthlyAccess() {
+    },    async grantMonthlyAccess(event) {
         const month = document.getElementById('access-month').value;
         const daysStr = document.getElementById('access-days').value;
         const startDateStr = document.getElementById('access-start-date').value;
@@ -577,10 +577,14 @@ const AdminPage = {
             return;
         }
 
-        const btn = event.target.closest('button');
-        const originalHtml = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
-        btn.disabled = true;
+        event = event || window.event;
+        const btn = event ? event.target.closest('button') : null;
+        let originalHtml = '';
+        if (btn) {
+            originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Processing...';
+            btn.disabled = true;
+        }
 
         try {
             const users = store.getUsers().filter(u => u.role === 'student');
@@ -632,8 +636,10 @@ const AdminPage = {
             console.error(err);
             ui.showToast('Failed to grant access: ' + err.message, 'error');
         } finally {
-            btn.innerHTML = originalHtml;
-            btn.disabled = false;
+            if (btn) {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
         }
     },
 
@@ -875,8 +881,10 @@ const AdminPage = {
         const rolePriority = { 'admin': 0, 'teacher': 1, 'student': 2 };
         
         users.sort((a, b) => {
-            const priorityA = rolePriority[a.role] ?? 99;
-            const priorityB = rolePriority[b.role] ?? 99;
+            const roleA = a.role || '';
+            const roleB = b.role || '';
+            const priorityA = rolePriority[roleA] !== undefined ? rolePriority[roleA] : 99;
+            const priorityB = rolePriority[roleB] !== undefined ? rolePriority[roleB] : 99;
 
             // Sort by Role Priority first
             if (priorityA !== priorityB) {
@@ -884,17 +892,17 @@ const AdminPage = {
             }
 
             // Same Role - Secondary Sorting
-            if (a.role === 'teacher') {
+            if (roleA === 'teacher') {
                 // Teacher: A to Z by Name
-                return (a.name || '').localeCompare(b.name || '');
-            } else if (a.role === 'student') {
+                return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
+            } else if (roleA === 'student') {
                 // Student: By Student Code (extracted from email)
                 const codeA = (a.email || '').split('@')[0];
                 const codeB = (b.email || '').split('@')[0];
-                return codeA.localeCompare(codeB, undefined, { numeric: true, sensitivity: 'base' });
+                return codeA.localeCompare(codeB, 'en', { numeric: true, sensitivity: 'base' });
             } else {
                 // Admin/Others: A to Z by Name
-                return (a.name || '').localeCompare(b.name || '');
+                return (a.name || '').localeCompare(b.name || '', 'en', { sensitivity: 'base' });
             }
         });
 
@@ -987,9 +995,11 @@ const AdminPage = {
                     </div>
                 </td>
                 <td class="px-4 py-3 text-right">
-                    ${user.role === 'student' ? `<button onclick="event.stopPropagation(); AdminPage.resetStudentProgress('${user.id}')" class="text-amber-600 hover:text-amber-900 mr-2" title="Reset Progress"><i class="fas fa-history"></i></button>` : ''}
-                    <button onclick="event.stopPropagation(); AdminPage.editUser('${user.id}')" class="text-indigo-600 hover:text-indigo-900 mr-2" title="Edit/Assign"><i class="fas fa-edit"></i></button>
-                    ${canDelete ? `<button onclick="event.stopPropagation(); AdminPage.deleteUser('${user.id}')" class="text-red-600 hover:text-red-900"><i class="fas fa-trash"></i></button>` : ''}
+                    <div class="flex items-center justify-end gap-3 flex-nowrap whitespace-nowrap">
+                        ${user.role === 'student' ? `<button onclick="event.stopPropagation(); AdminPage.resetStudentProgress('${user.id}')" class="text-amber-600 hover:text-amber-900 transition-colors" title="Reset Progress"><i class="fas fa-history"></i></button>` : ''}
+                        <button onclick="event.stopPropagation(); AdminPage.editUser('${user.id}')" class="text-pink-600 hover:text-pink-900 transition-colors" title="Edit/Assign"><i class="fas fa-edit"></i></button>
+                        ${canDelete ? `<button onclick="event.stopPropagation(); AdminPage.deleteUser('${user.id}')" class="text-red-600 hover:text-red-900 transition-colors"><i class="fas fa-trash"></i></button>` : ''}
+                    </div>
                 </td>
             </tr>
         `}).join('');
