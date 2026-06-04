@@ -142,8 +142,9 @@ const App = {
             
             const submitBtn = e.target.querySelector('button[type="submit"]');
             const originalText = submitBtn.innerHTML;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
             submitBtn.disabled = true;
+
+            App.showGlobalLoader('Authenticating...');
 
             const res = await auth.login(email, password);
             if (res.success) {
@@ -152,11 +153,14 @@ const App = {
                 // CRITICAL FIX: Ensure user data is fetched BEFORE attempting to render
                 const fbUser = firebase.auth().currentUser;
                 if (fbUser && !store.getUserByFirebaseUid(fbUser.uid)) {
+                    App.showGlobalLoader('Fetching your profile...');
                     await store.fetchUserByUid(fbUser.uid);
                 }
                 
+                App.showGlobalLoader('Preparing workspace...');
                 this.checkAuthAndRender();
             } else {
+                App.hideGlobalLoader();
                 ui.showToast(res.error || 'Invalid email or password', 'error');
             }
             submitBtn.innerHTML = originalText;
@@ -228,9 +232,12 @@ const App = {
     },
 
 
-    showGlobalLoader() {
+    showGlobalLoader(message = 'Syncing your workspace...') {
         const loader = document.getElementById('global-loader');
         if (loader) {
+            const textElement = loader.querySelector('p');
+            if (textElement) textElement.textContent = message;
+            
             loader.classList.remove('hidden');
             // Small delay to ensure opacity transition works if just added
             setTimeout(() => loader.classList.remove('opacity-0'), 10);
