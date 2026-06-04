@@ -587,16 +587,28 @@ const AdminPage = {
         }
 
         try {
+            App.showGlobalLoader('Analyzing student data...');
             const users = store.getUsers().filter(u => u.role === 'student');
-            let updatedCount = 0;
             
             const expiryDate = new Date(startDate.getTime() + (days * 24 * 60 * 60 * 1000));
             const fmtDate = d => { const z = n => ('0'+n).slice(-2); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; };
             const startISO = fmtDate(startDate);
             const expiryISO = fmtDate(expiryDate);
 
+            // Prepare batches
+            const batches = [];
+            let currentBatch = db.batch();
+            let operationsInCurrentBatch = 0;
+
+            let updatedCount = 0;
+            let skippedCount = 0;
+            let errorCount = 0;
+
             for (const user of users) {
-                if (!user.subjects || user.subjects.length === 0) continue;
+                if (!user.subjects || user.subjects.length === 0) {
+                    skippedCount++;
+                    continue;
+                }
 
                 let updatedMonths = user.months ? { ...user.months } : {};
                 let updatedMonthExpiry = user.monthExpiry ? { ...user.monthExpiry } : {};
@@ -621,19 +633,92 @@ const AdminPage = {
                 });
 
                 if (modified) {
-                    await store.updateUser(user.id, {
+                    const userRef = db.collection('users').doc(user.id);
+                    currentBatch.update(userRef, {
                         months: updatedMonths,
                         monthExpiry: updatedMonthExpiry
                     });
                     updatedCount++;
+                    operationsInCurrentBatch++;
+
+                    // Firestore batch limit is 500, we use 450 for safety
+                    if (operationsInCurrentBatch === 450) {
+                        batches.push(currentBatch);
+                        currentBatch = db.batch();
+                        operationsInCurrentBatch = 0;
+                    }
+                } else {
+                    skippedCount++;
                 }
             }
 
-            ui.showToast(`Successfully granted access to ${updatedCount} students.`);
+            // Push the last batch if it has operations
+            if (operationsInCurrentBatch > 0) {
+                batches.push(currentBatch);
+            }
+
+            // Execute batches sequentially
+            for (let i = 0; i < batches.length; i++) {
+                App.showGlobalLoader(`Saving Data: Batch ${i + 1} of ${batches.length}...`);
+                try {
+                    await batches[i].commit();
+                } catch (batchErr) {
+                    console.error('Batch commit error:', batchErr);
+                    errorCount += 450; // Approximation for the UI report if a batch fails
+                }
+            }
+
             store.addLog('Update Permissions', `Bulk granted ${days} days for ${month}.`);
-            this.renderUsers();
+            
+            App.hideGlobalLoader();
+
+            // Show a detailed report modal
+            const reportHtml = `
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check-circle text-3xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Access Granted Successfully</h3>
+                    <div class="bg-gray-50 rounded-lg p-4 mb-4 text-left">
+                        <div class="flex justify-between py-1 border-b border-gray-200">
+                            <span class="text-gray-500 font-medium">Total Students:</span>
+                            <span class="font-bold text-gray-800">${users.length}</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-gray-200">
+                            <span class="text-emerald-600 font-medium">Successfully Updated:</span>
+                            <span class="font-bold text-emerald-700">${updatedCount}</span>
+                        </div>
+                        <div class="flex justify-between py-1 border-b border-gray-200">
+                            <span class="text-amber-500 font-medium">Skipped (No Subjects):</span>
+                            <span class="font-bold text-amber-600">${skippedCount}</span>
+                        </div>
+                        <div class="flex justify-between py-1">
+                            <span class="text-rose-500 font-medium">Failed/Errors:</span>
+                            <span class="font-bold text-rose-600">${errorCount > 0 ? errorCount : 0}</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-4">The students' access to their assigned subjects for <strong>${month}</strong> has been updated and will expire on <strong>${expiryDate.toLocaleDateString()}</strong>.</p>
+                    <button onclick="document.getElementById('monthly-access-report-modal').remove()" class="w-full px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition shadow-sm">
+                        Done
+                    </button>
+                </div>
+            `;
+            
+            const modalContainer = document.createElement('div');
+            modalContainer.id = 'monthly-access-report-modal';
+            modalContainer.className = 'fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm fade-in';
+            modalContainer.innerHTML = `
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden scale-in">
+                    <div class="p-6">
+                        ${reportHtml}
+                    </div>
+                </div>
+            `;
+            document.getElementById('modals-container').appendChild(modalContainer);
+
         } catch (err) {
             console.error(err);
+            App.hideGlobalLoader();
             ui.showToast('Failed to grant access: ' + err.message, 'error');
         } finally {
             if (btn) {
