@@ -1913,6 +1913,21 @@ const AdminPage = {
             const color = actionColors[log.action] || 'bg-gray-100 text-gray-700';
             const dt = new Date(log.timestamp);
             const timeStr = dt.toLocaleDateString('en-GB') + ' ' + dt.toLocaleTimeString();
+            
+            // Dynamic fix for legacy "to Subject {ID}" logs
+            let displayDetails = log.details || '-';
+            if (log.action === 'Upload Video (Background)' && displayDetails.includes('to Subject ')) {
+                const parts = displayDetails.split('to Subject ');
+                if (parts.length === 2) {
+                    const subjectId = parts[1].trim();
+                    const allSubjects = store.getSubjects();
+                    const subject = allSubjects.find(s => s.id === subjectId);
+                    if (subject) {
+                        displayDetails = `${parts[0]}to [${subject.level}] ${subject.name}`;
+                    }
+                }
+            }
+
             return `
                 <div class="p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all group">
                     <div class="flex justify-between items-center mb-3">
@@ -1922,7 +1937,7 @@ const AdminPage = {
                         </span>
                     </div>
                     <div class="text-sm text-gray-700 leading-relaxed mb-3 break-words font-medium">
-                        ${log.details || '-'}
+                        ${displayDetails}
                     </div>
                     <div class="text-[10px] font-bold text-gray-400 flex items-center gap-1.5 uppercase tracking-tight">
                         <i class="far fa-clock text-gray-300"></i>${timeStr}

@@ -77,7 +77,9 @@ const UploadManager = {
                 views: 0
             });
 
-            store.addLog('Upload Video (Background)', `"${next.data.title}" to Subject ${next.data.subjectId}`);
+            const subject = store.getSubjects().find(s => s.id === next.data.subjectId);
+            const subjectName = subject ? `[${subject.level}] ${subject.name}` : next.data.subjectId;
+            store.addLog('Upload Video (Background)', `"${next.data.title}" to ${subjectName}`);
 
             next.status = 'done';
             this.showCompletionNotification(next, true);
