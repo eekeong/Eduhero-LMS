@@ -224,7 +224,7 @@ const TeacherPage = {
                 <form id="add-video-form" class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Video Title</label>
-                        <input type="text" id="av-title" required placeholder="EX. F2 SEJ FEB WEEK 1" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <input type="text" id="av-title" required placeholder="EX. 2026 F2 SEJ FEB WEEK 1 - MR JACK (BAB 1.3)" class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
                         <p id="av-title-error" class="text-xs text-red-500 mt-1 hidden"></p>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
