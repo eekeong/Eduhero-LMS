@@ -1,0 +1,26 @@
+{
+  "name": "eduhero-lms",
+  "version": "1.0.0",
+  "description": "A fast, simple, and scalable Learning Management System built for tuition centers.  This project uses a Zero-Setup architecture (Vanilla JavaScript + Tailwind CSS) which allows you to run the entire application locally by simply opening the `index.html` file in your browser, without needing to install Node.js, databases, or run any build processes.",
+  "main": "index.js",
+  "scripts": {
+    "build": "npx @tailwindcss/cli -i ./css/tailwind-input.css -o ./css/tailwind.css",
+    "dev": "npx @tailwindcss/cli -i ./css/tailwind-input.css -o ./css/tailwind.css --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eekeong/Eduhero-LMS.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/eekeong/Eduhero-LMS/issues"
+  },
+  "homepage": "https://github.com/eekeong/Eduhero-LMS#readme",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.1",
+    "tailwindcss": "^4.3.1"
+  }
+}

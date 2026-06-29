@@ -371,16 +371,9 @@ const store = {
                 _cache.settings = { ...DEFAULT_SETTINGS, ...settingsDoc.data() };
             }
             
-            // WARM CACHE: Fetch subjects and videos immediately but asynchronously
-            // so they do not block the app initialization UI.
-            db.collection(COLLECTIONS.SUBJECTS).get().then(subSnap => {
-                _cache.subjects = subSnap.docs.map(docToObj);
-            }).catch(e => console.warn('[Store] Warm subjects cache failed:', e));
-            
-            db.collection(COLLECTIONS.VIDEOS).get().then(vidSnap => {
-                _cache.videos = vidSnap.docs.map(docToObj);
-                _cache.ready = true;
-            }).catch(e => console.warn('[Store] Warm videos cache failed:', e));
+            // Cache warming for subjects and videos removed because it requires authentication.
+            // They will be loaded by startSync() after successful login.
+            _cache.ready = true;
             
         } catch (err) {
             console.warn('[Store] ⚠️ Network delay: UI might be temporarily empty.');
