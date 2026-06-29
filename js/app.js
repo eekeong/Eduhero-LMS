@@ -60,9 +60,10 @@ const App = {
         document.title = systemName + ' LMS';
 
         // Update Logos
-        const setLogo = (wrapperId, iconId) => {
+        const setLogo = (wrapperId, iconId, textId) => {
             const wrapper = document.getElementById(wrapperId);
             const icon = document.getElementById(iconId);
+            const textElem = textId ? document.getElementById(textId) : null;
             if (!wrapper) return;
             
             // Remove existing image if any
@@ -70,20 +71,22 @@ const App = {
             if (existingImg) existingImg.remove();
 
             if (logoUrl) {
-                if (icon) icon.classList.add('hidden');
+                if (icon) icon.style.display = 'none';
+                if (textElem) textElem.style.display = 'none';
                 const img = document.createElement('img');
                 img.src = logoUrl;
-                img.className = wrapperId === 'login-logo-container' || wrapperId === 'loader-logo-container' ? 'w-full h-full object-cover rounded-full' : 'h-8 max-w-[120px] object-contain';
+                img.className = wrapperId === 'sidebar-logo-wrapper' || wrapperId === 'mobile-logo-wrapper' ? 'h-8 max-w-[150px] object-contain' : 'w-full h-full object-contain';
                 wrapper.appendChild(img);
             } else {
-                if (icon) icon.classList.remove('hidden');
+                if (icon) icon.style.display = '';
+                if (textElem) textElem.style.display = '';
             }
         };
 
-        setLogo('login-logo-container', 'login-logo-icon');
-        setLogo('sidebar-logo-wrapper', 'sidebar-logo-icon');
-        setLogo('mobile-logo-wrapper', 'mobile-logo-icon');
-        setLogo('loader-logo-container', 'loader-logo-icon');
+        setLogo('login-logo-container', 'login-logo-icon', 'login-system-name');
+        setLogo('sidebar-logo-wrapper', 'sidebar-logo-icon', 'sidebar-system-name');
+        setLogo('mobile-logo-wrapper', 'mobile-logo-icon', 'mobile-system-name');
+        setLogo('loader-logo-container', 'loader-logo-icon', 'loader-system-name');
 
         // Apply System Theme Color
         const systemColor = settings.systemColor || '#4F46E5';

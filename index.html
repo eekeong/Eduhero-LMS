@@ -21,8 +21,10 @@
             <div class="absolute inset-0 border-4 border-indigo-200 rounded-full animate-ping opacity-75"></div>
             <div class="absolute inset-0 border-4 border-t-indigo-600 border-r-transparent border-b-purple-600 border-l-transparent rounded-full animate-spin"></div>
             <!-- Center Logo -->
-            <div id="loader-logo-container" class="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg z-10 overflow-hidden">
-                <i id="loader-logo-icon" class="fas fa-graduation-cap text-3xl text-indigo-600"></i>
+            <div id="loader-logo-container" class="w-16 h-16 bg-transparent flex items-center justify-center z-10">
+                <div id="loader-logo-icon" class="w-full h-full bg-white rounded-full flex items-center justify-center shadow-lg">
+                    <i class="fas fa-graduation-cap text-3xl text-indigo-600"></i>
+                </div>
             </div>
         </div>
         <h2 id="loader-system-name" class="mt-6 text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">EduHero LMS</h2>
@@ -37,11 +39,13 @@
         class="view-section w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-600 to-purple-700">
         <div
             class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md transform transition-all hover:scale-105 duration-300">
-            <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-graduation-cap text-3xl text-indigo-600"></i>
+            <div class="text-center mb-8 flex flex-col items-center">
+                <div id="login-logo-container" class="h-24 w-full flex items-center justify-center mb-4">
+                    <div id="login-logo-icon" class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
+                        <i class="fas fa-graduation-cap text-3xl text-indigo-600"></i>
+                    </div>
                 </div>
-                <h1 class="text-3xl font-bold text-gray-800">EduHero LMS</h1>
+                <h1 id="login-system-name" class="text-3xl font-bold text-gray-800">EduHero LMS</h1>
                 <p class="text-gray-500 mt-2">Welcome back! Please login.</p>
             </div>
             <form id="login-form" class="space-y-6">
@@ -122,9 +126,9 @@
         <main class="flex-1 bg-gray-50 flex flex-col h-full overflow-hidden relative">
             <!-- Mobile Header -->
             <header class="md:hidden h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4">
-                <div class="flex items-center">
-                    <i class="fas fa-graduation-cap text-xl text-indigo-600 mr-2"></i>
-                    <span class="text-lg font-bold">EduHero</span>
+                <div id="mobile-logo-wrapper" class="flex items-center gap-2 max-w-[200px]">
+                    <i id="mobile-logo-icon" class="fas fa-graduation-cap text-xl text-indigo-600 mr-2"></i>
+                    <span id="mobile-system-name" class="text-lg font-bold">EduHero</span>
                 </div>
                 <button id="mobile-menu-btn" class="text-gray-500 hover:text-gray-700">
                     <i class="fas fa-bars text-xl"></i>
