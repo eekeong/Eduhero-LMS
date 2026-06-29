@@ -145,7 +145,7 @@ const AdminPage = {
                                         <div class="flex items-center gap-4">
                                             <div id="settings-logo-preview" class="w-16 h-16 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
                                                 <i class="fas fa-image text-gray-400" id="settings-logo-icon"></i>
-                                                <img id="settings-logo-img" class="w-full h-full object-contain hidden" alt="Logo Preview">
+                                                <div id="settings-logo-img" class="w-full h-full bg-contain bg-center bg-no-repeat hidden" aria-label="Logo Preview"></div>
                                             </div>
                                             <div>
                                                 <input type="file" id="setting-logo-file" accept="image/*" class="hidden">
@@ -159,7 +159,7 @@ const AdminPage = {
                                         <div class="flex items-center gap-4">
                                             <div id="settings-student-avatar-preview" class="w-16 h-16 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden">
                                                 <i class="fas fa-user-graduate text-gray-400" id="settings-student-avatar-icon"></i>
-                                                <img id="settings-student-avatar-img" class="w-full h-full object-contain hidden" alt="Student Avatar Preview">
+                                                <div id="settings-student-avatar-img" class="w-full h-full bg-contain bg-center bg-no-repeat hidden" aria-label="Student Avatar Preview"></div>
                                             </div>
                                             <div>
                                                 <input type="file" id="setting-student-avatar-file" accept="image/*" class="hidden">
@@ -414,12 +414,12 @@ const AdminPage = {
 
         const updateLogoPreview = (url) => {
             if (url) {
-                logoImg.src = url;
+                logoImg.style.backgroundImage = `url(${url})`;
                 logoImg.classList.remove('hidden');
                 logoIcon.classList.add('hidden');
                 removeBtn.classList.remove('hidden');
             } else {
-                logoImg.src = '';
+                logoImg.style.backgroundImage = '';
                 logoImg.classList.add('hidden');
                 logoIcon.classList.remove('hidden');
                 removeBtn.classList.add('hidden');
@@ -458,12 +458,12 @@ const AdminPage = {
 
         const updateStudentAvatarPreview = (url) => {
             if (url) {
-                stuAvatarImg.src = url;
+                stuAvatarImg.style.backgroundImage = `url(${url})`;
                 stuAvatarImg.classList.remove('hidden');
                 stuAvatarIcon.classList.add('hidden');
                 stuRemoveBtn.classList.remove('hidden');
             } else {
-                stuAvatarImg.src = '';
+                stuAvatarImg.style.backgroundImage = '';
                 stuAvatarImg.classList.add('hidden');
                 stuAvatarIcon.classList.remove('hidden');
                 stuRemoveBtn.classList.add('hidden');
