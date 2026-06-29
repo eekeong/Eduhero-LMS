@@ -83,7 +83,7 @@ const App = {
             }
         };
 
-        setLogo('login-logo-container', 'login-logo-icon', 'login-system-name');
+        setLogo('login-logo-container', 'login-logo-icon');
         setLogo('sidebar-logo-wrapper', 'sidebar-logo-icon', 'sidebar-system-name');
         setLogo('mobile-logo-wrapper', 'mobile-logo-icon', 'mobile-system-name');
         setLogo('loader-logo-container', 'loader-logo-icon', 'loader-system-name');
