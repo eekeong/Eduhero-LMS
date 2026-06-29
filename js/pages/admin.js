@@ -416,12 +416,12 @@ const AdminPage = {
             if (url) {
                 logoImg.src = url;
                 logoImg.classList.remove('hidden');
-                logoIcon.classList.add('hidden');
+                logoIcon.style.display = 'none';
                 removeBtn.classList.remove('hidden');
             } else {
                 logoImg.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
                 logoImg.classList.add('hidden');
-                logoIcon.classList.remove('hidden');
+                logoIcon.style.display = '';
                 removeBtn.classList.add('hidden');
             }
         };
@@ -460,12 +460,12 @@ const AdminPage = {
             if (url) {
                 stuAvatarImg.src = url;
                 stuAvatarImg.classList.remove('hidden');
-                stuAvatarIcon.classList.add('hidden');
+                stuAvatarIcon.style.display = 'none';
                 stuRemoveBtn.classList.remove('hidden');
             } else {
                 stuAvatarImg.src = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
                 stuAvatarImg.classList.add('hidden');
-                stuAvatarIcon.classList.remove('hidden');
+                stuAvatarIcon.style.display = '';
                 stuRemoveBtn.classList.add('hidden');
             }
         };
